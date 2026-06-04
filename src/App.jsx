@@ -1,70 +1,65 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 // =================================================================
-//  ✏️ 여기만 채우면 됩니다 — 단원별 표현 + 이미지
+//  ✏️ 여기만 채우면 됩니다 — 단원별 표현 + 이미지 (3학년용)
 // -----------------------------------------------------------------
-//  - 4개 단원(Unit 1~4)에 표현을 넣어주세요.
+//  - 3개 단원(2~4단원)에 표현을 넣어주세요.
 //  - 한 단원에 6문장 이상 넣어두면, 게임을 시작할 때마다
 //    그 중 6문장을 "무작위로" 뽑아 보드에 배치합니다. (매번 새 게임!)
 //  - image: Firebase Storage 다운로드 URL(또는 /images/파일명)을 붙여넣으세요.
 //  - emoji: 그림(image)이 없거나 불러오지 못할 때 대신 보여줄 이모지입니다.
 //           (emoji도 비워두면 💬 아이콘이 표시됩니다.)
 //  - question / answer: 학생이 말할 영어 질문과 대답입니다.
+//  - 4단원은 answer 대신 noun(동물)만 적으면, 게임마다 1~10 숫자를
+//    무작위로 붙여 "Seven pigs." 처럼 대답을 만들어 줍니다.
 // =================================================================
 const UNIT_POOLS = {
-  '1단원': [
-    { emoji: '🇨🇦', image: '/images/u1-from-canada.png', question: 'Where are you from?', answer: "I'm from Canada." },
-    { emoji: '🇨🇳', image: '/images/u1-from-china.png', question: 'Where are you from?', answer: "I'm from China." },
-    { emoji: '🇫🇷', image: '/images/u1-from-france.png', question: 'Where are you from?', answer: "I'm from France." },
-    { emoji: '🇮🇳', image: '/images/u1-from-india.png', question: 'Where are you from?', answer: "I'm from India." },
-    { emoji: '🇰🇷', image: '/images/u1-from-korea.png', question: 'Where are you from?', answer: "I'm from Korea." },
-    { emoji: '🇻🇳', image: '/images/u1-from-vietnam.png', question: 'Where are you from?', answer: "I'm from Vietnam." },
-    { emoji: '🇺🇸', image: '/images/u1-from-us.png', question: 'Where are you from?', answer: "I'm from the U.S." },
-  ],
   '2단원': [
-    { emoji: '🍴', image: '/images/u2-forks.png', question: 'What are these?', answer: "They're forks." },
-    { emoji: '🗺️', image: '/images/u2-maps.png', question: 'What are those?', answer: "They're maps." },
-    { emoji: '✂️', image: '/images/u2-scissors.png', question: 'What are these?', answer: "They're scissors." },
-    { emoji: '🥄', image: '/images/u2-spoons.png', question: 'What are those?', answer: "They're spoons." },
-    { emoji: '📔', image: '/images/u2-albums.png', question: 'What are these?', answer: "They're albums." },
-    { emoji: '🔘', image: '/images/u2-buttons.png', question: 'What are those?', answer: "They're buttons." },
+    { emoji: '🖊️', image: '/images/u2-pen.png', question: "What's this?", answer: "It's a pen." },
+    { emoji: '🎒', image: '/images/u2-bag.png', question: "What's that?", answer: "It's a bag." },
+    { emoji: '🚗', image: '/images/u2-car.png', question: "What's this?", answer: "It's a car." },
+    { emoji: '🥤', image: '/images/u2-cup.png', question: "What's that?", answer: "It's a cup." },
+    { emoji: '⚽', image: '/images/u2-ball.png', question: "What's this?", answer: "It's a ball." },
+    { emoji: '🪑', image: '/images/u2-chair.png', question: "What's that?", answer: "It's a chair." },
   ],
   '3단원': [
-    { emoji: '🚲', image: '/images/u3-ride-bike.png', question: 'Can I ride a bike?', answer: 'Yes, you can.' },
-    { emoji: '🐶', image: '/images/u3-bring-animals.png', question: 'Can I bring animals?', answer: "No, you can't." },
-    { emoji: '📷', image: '/images/u3-take-pictures.png', question: 'Can I take pictures?', answer: 'Yes, you can.' },
-    { emoji: '🍔', image: '/images/u3-eat-here.png', question: 'Can I eat here?', answer: "No, you can't." },
-    { emoji: '🪑', image: '/images/u3-sit-here.png', question: 'Can I sit here?', answer: 'Yes, you can.' },
-    { emoji: '🖊️', image: '/images/u3-borrow-pen.png', question: 'Can I borrow a pen?', answer: 'Yes, you can.' },
+    { emoji: '💺', image: '/images/u3-sit-down.png', question: 'Sit down, please.', answer: 'Sit down, please.' },
+    { emoji: '🧍', image: '/images/u3-stand-up.png', question: 'Stand up, please.', answer: 'Stand up, please.' },
+    { emoji: '🚪', image: '/images/u3-open-door.png', question: 'Open the door, please.', answer: 'Open the door, please.' },
+    { emoji: '🔒', image: '/images/u3-close-door.png', question: 'Close the door, please.', answer: 'Close the door, please.' },
+    { emoji: '👋', image: '/images/u3-come-here.png', question: 'Come here, please.', answer: 'Come here, please.' },
+    { emoji: '👀', image: '/images/u3-look-at-me.png', question: 'Look at me.', answer: 'Look at me.' },
   ],
   '4단원': [
-    { emoji: '✏️', image: '/images/u4-pencilcase-mine.png', question: 'Whose pencil case is this?', answer: "It's mine." },
-    { emoji: '📱', image: '/images/u4-phone-toms.png', question: 'Whose phone is this?', answer: "It's Tom's." },
-    { emoji: '🖊️', image: '/images/u4-pen-jacks.png', question: 'Whose pen is that?', answer: "It's Jack's." },
-    { emoji: '📕', image: '/images/u4-textbook-erics.png', question: 'Whose textbook is that?', answer: "It's Eric's." },
-    { emoji: '🍶', image: '/images/u4-bottle-mikes.png', question: 'Whose bottle is that?', answer: "It's Mike's." },
-    { emoji: '🖍️', image: '/images/u4-pencilcase-sams.png', question: 'Whose pencil case is that?', answer: "It's Sam's." },
+    { emoji: '🐷', image: '/images/u4-pigs.png', noun: 'pigs', question: 'How many pigs?' },
+    { emoji: '🐶', image: '/images/u4-dogs.png', noun: 'dogs', question: 'How many dogs?' },
+    { emoji: '🐱', image: '/images/u4-cats.png', noun: 'cats', question: 'How many cats?' },
+    { emoji: '🦆', image: '/images/u4-ducks.png', noun: 'ducks', question: 'How many ducks?' },
+    { emoji: '🦘', image: '/images/u4-kangaroos.png', noun: 'kangaroos', question: 'How many kangaroos?' },
+    { emoji: '🐯', image: '/images/u4-tigers.png', noun: 'tigers', question: 'How many tigers?' },
   ],
 };
 
 const SENTENCES_PER_UNIT = 6;
 
-// 보드 배치 틀: START + 일반칸 24 + 액션칸 3 + FINISH = 29칸
-// (원래 동물 게임과 동일한 구조 — 'content' 자리에만 표현이 들어갑니다)
+// 4단원(How many ~?)에서 매 게임마다 무작위로 붙일 숫자(1~10) 영어 단어
+const NUMBER_WORDS = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+
+// 보드 배치 틀: START + 일반칸 18 + 액션칸 3 + FINISH = 23칸
+// (3단원 × 6문장 = 18개 표현이 'content' 자리에 들어갑니다)
 const BOARD_LAYOUT = [
   { type: 'start', label: 'START' },
-  ...Array(10).fill({ type: 'content' }),
+  ...Array(6).fill({ type: 'content' }),
   { type: 'action', action: 'forward2', label: '앞으로\n2칸 🚀' },
-  ...Array(2).fill({ type: 'content' }),
+  ...Array(3).fill({ type: 'content' }),
   { type: 'action', action: 'rest', label: '한 번\n쉬기 💤' },
   ...Array(3).fill({ type: 'content' }),
   { type: 'action', action: 'back2', label: '뒤로\n2칸 🍌' },
-  ...Array(9).fill({ type: 'content' }),
+  ...Array(6).fill({ type: 'content' }),
   { type: 'finish', label: 'FINISH' },
 ];
 
 const UNIT_COLORS = {
-  '1단원': 'text-rose-700 bg-rose-50 border-rose-300',
   '2단원': 'text-sky-700 bg-sky-50 border-sky-300',
   '3단원': 'text-emerald-700 bg-emerald-50 border-emerald-300',
   '4단원': 'text-violet-700 bg-violet-50 border-violet-300',
@@ -101,7 +96,13 @@ const buildBoard = () => {
   return BOARD_LAYOUT.map((layout, id) => {
     if (layout.type === 'content') {
       const c = contentQueue[qi++] || { unit: '', question: '', answer: '' };
-      return { id, type: 'normal', ...c };
+      const item = { ...c };
+      // 4단원: noun(동물)만 있으면 1~10 숫자를 무작위로 붙여 대답을 만든다
+      if (!item.answer && item.noun) {
+        const num = NUMBER_WORDS[Math.floor(Math.random() * NUMBER_WORDS.length)];
+        item.answer = `${num} ${item.noun}.`;
+      }
+      return { id, type: 'normal', ...item };
     }
     return { id, ...layout };
   });
@@ -258,28 +259,26 @@ const WORD_MEANING = {
   you: '너', your: '너의', is: '~이다', are: '~이다(복수)', am: '~이다',
   the: '그 (정관사)', a: '하나의', an: '하나의', in: '~에/안에', on: '~에/위에',
   to: '~로', and: '그리고', can: '~해도 된다/~할 수 있다', do: '~하다', go: '가다',
-  see: '보다', eat: '먹다', have: '가지고 있다',
+  see: '보다', eat: '먹다', have: '가지고 있다', please: '~해 주세요',
   its: '그것의', "it's": '그것은 ~이다', they: '그들/그것들', "they're": '그것들은 ~이다',
-  theyre: '그것들은 ~이다', this: '이것', that: '저것', here: '여기에', from: '~에서/~출신의',
+  theyre: '그것들은 ~이다', this: '이것', that: '저것', here: '여기에/이리로', from: '~에서/~출신의',
   yes: '응/네', no: '아니/아니요', "can't": '~할 수 없다/~하면 안 된다', cant: '~할 수 없다/~하면 안 된다',
+  at: '~을/~에', up: '위로', down: '아래로',
   // 의문사
-  what: '무엇/어떤', when: '언제', why: '왜', how: '어떻게', where: '어디에', whose: '누구의',
+  what: '무엇/어떤', "what's": '무엇이니', when: '언제', why: '왜', how: '어떻게/얼마나',
+  where: '어디에', whose: '누구의', many: '많은/몇 개의', 'how many': '몇 개/몇 마리',
   these: '이것들', those: '저것들',
-  // 1단원 (어디에서 왔니?)
-  canada: '캐나다', china: '중국', france: '프랑스', india: '인도',
-  korea: '한국', vietnam: '베트남', us: '미국', usa: '미국', america: '미국',
-  // 2단원 (이것들/저것들은 무엇이니?)
-  forks: '포크들', maps: '지도들', scissors: '가위', spoons: '숟가락들',
-  albums: '앨범들', buttons: '단추들',
-  // 3단원 (~해도 되니?)
-  ride: '타다', bike: '자전거', bring: '데려오다/가져오다', animals: '동물들',
-  take: '찍다/가지다', pictures: '사진들', sit: '앉다', borrow: '빌리다', pen: '펜',
-  // 4단원 (누구의 것이니?)
-  pencil: '연필', case: '케이스/상자', 'pencil case': '필통', phone: '전화기',
-  textbook: '교과서', bottle: '물병', mine: '내 것',
-  "tom's": '탐의 것', toms: '탐의 것', "jack's": '잭의 것', jacks: '잭의 것',
-  "eric's": '에릭의 것', erics: '에릭의 것', "mike's": '마이크의 것', mikes: '마이크의 것',
-  "sam's": '샘의 것', sams: '샘의 것',
+  // 숫자 (1~10)
+  one: '1, 하나', two: '2, 둘', three: '3, 셋', four: '4, 넷', five: '5, 다섯',
+  six: '6, 여섯', seven: '7, 일곱', eight: '8, 여덟', nine: '9, 아홉', ten: '10, 열',
+  // 2단원 (이것/저것은 무엇이니?)
+  pen: '펜', bag: '가방', car: '자동차', cup: '컵', ball: '공', chair: '의자',
+  // 3단원 (교실 영어 표현)
+  sit: '앉다', stand: '일어서다/서다', open: '열다', close: '닫다', door: '문',
+  come: '오다', look: '보다',
+  // 4단원 (몇 마리니?)
+  pigs: '돼지들', dogs: '개들', cats: '고양이들', ducks: '오리들',
+  kangaroos: '캥거루들', tigers: '호랑이들',
 };
 
 const lookupMeaning = (raw) => {
@@ -303,9 +302,9 @@ const pickRandomBlanks = (segs, count) => {
   return new Set(shuffleArr(idxs).slice(0, count));
 };
 
-// 보드에서 단원별 2개씩 (총 8개) 쓰기 활동 칸을 무작위로 뽑음
+// 보드에서 단원별 2개씩 (총 6개) 쓰기 활동 칸을 무작위로 뽑음
 const pickWritingCells = (board, perUnit = 2) => {
-  const units = ['1단원', '2단원', '3단원', '4단원'];
+  const units = ['2단원', '3단원', '4단원'];
   const out = new Set();
   units.forEach((u) => {
     const ids = board
@@ -991,7 +990,7 @@ export default function App() {
 
       <header className="w-full max-w-5xl flex flex-col md:flex-row justify-between items-center gap-4 mb-4 bg-white/95 backdrop-blur-sm p-4 rounded-2xl shadow-[0_4px_0_0_rgba(0,0,0,0.2)] z-10 border-2 border-emerald-900">
         <h1 className="text-2xl md:text-3xl font-black text-emerald-800 uppercase tracking-wider flex items-center gap-2">
-          🦁 5학년 영어 표현 보드게임
+          🎒 3학년 영어 표현 보드게임
         </h1>
 
         <div className="flex flex-col sm:flex-row gap-3 items-center">
@@ -1029,7 +1028,7 @@ export default function App() {
       {boardWritingMode && (
         <div className="w-full max-w-5xl bg-violet-100 border-4 border-violet-400 p-3 rounded-2xl mb-4 text-center z-10 animate-pulse">
           <p className="text-base md:text-lg font-black text-violet-800">
-            ✏️ 쓰기 활동 — 단원별 2개씩, 총 <span className="text-violet-900">8개 칸</span>에 표시된 ✏️ 쓰기 칸을 눌러보세요
+            ✏️ 쓰기 활동 — 단원별 2개씩, 총 <span className="text-violet-900">6개 칸</span>에 표시된 ✏️ 쓰기 칸을 눌러보세요
           </p>
         </div>
       )}
