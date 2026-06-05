@@ -15,28 +15,28 @@ import React, { useState, useEffect, useRef } from 'react';
 // =================================================================
 const UNIT_POOLS = {
   '2단원': [
-    { emoji: '🖊️', image: '/images/u2-pen.png', question: "What's this?", answer: "It's a pen." },
-    { emoji: '🎒', image: '/images/u2-bag.png', question: "What's that?", answer: "It's a bag." },
-    { emoji: '🚗', image: '/images/u2-car.png', question: "What's this?", answer: "It's a car." },
-    { emoji: '🥤', image: '/images/u2-cup.png', question: "What's that?", answer: "It's a cup." },
-    { emoji: '⚽', image: '/images/u2-ball.png', question: "What's this?", answer: "It's a ball." },
-    { emoji: '🪑', image: '/images/u2-chair.png', question: "What's that?", answer: "It's a chair." },
+    { emoji: '🖊️', question: "What's this?", answer: "It's a pen." },
+    { emoji: '🎒', question: "What's that?", answer: "It's a bag." },
+    { emoji: '🚗', question: "What's this?", answer: "It's a car." },
+    { emoji: '☕', question: "What's that?", answer: "It's a cup." },
+    { emoji: '⚽', question: "What's this?", answer: "It's a ball." },
+    { emoji: '🪑', question: "What's that?", answer: "It's a chair." },
   ],
   '3단원': [
-    { emoji: '💺', image: '/images/u3-sit-down.png', question: 'Sit down, please.', answer: 'Sit down, please.' },
-    { emoji: '🧍', image: '/images/u3-stand-up.png', question: 'Stand up, please.', answer: 'Stand up, please.' },
-    { emoji: '🚪', image: '/images/u3-open-door.png', question: 'Open the door, please.', answer: 'Open the door, please.' },
-    { emoji: '🔒', image: '/images/u3-close-door.png', question: 'Close the door, please.', answer: 'Close the door, please.' },
-    { emoji: '👋', image: '/images/u3-come-here.png', question: 'Come here, please.', answer: 'Come here, please.' },
-    { emoji: '👀', image: '/images/u3-look-at-me.png', question: 'Look at me.', answer: 'Look at me.' },
+    { emoji: '💺', question: 'Sit down, please.', answer: 'Sit down, please.' },
+    { emoji: '🧍', question: 'Stand up, please.', answer: 'Stand up, please.' },
+    { emoji: '🚪', question: 'Open the door, please.', answer: 'Open the door, please.' },
+    { emoji: '🔒', question: 'Close the door, please.', answer: 'Close the door, please.' },
+    { emoji: '👋', question: 'Come here, please.', answer: 'Come here, please.' },
+    { emoji: '👀', question: 'Look at me.', answer: 'Look at me.' },
   ],
   '4단원': [
-    { emoji: '🐷', image: '/images/u4-pigs.png', noun: 'pigs', question: 'How many pigs?' },
-    { emoji: '🐶', image: '/images/u4-dogs.png', noun: 'dogs', question: 'How many dogs?' },
-    { emoji: '🐱', image: '/images/u4-cats.png', noun: 'cats', question: 'How many cats?' },
-    { emoji: '🦆', image: '/images/u4-ducks.png', noun: 'ducks', question: 'How many ducks?' },
-    { emoji: '🦘', image: '/images/u4-kangaroos.png', noun: 'kangaroos', question: 'How many kangaroos?' },
-    { emoji: '🐯', image: '/images/u4-tigers.png', noun: 'tigers', question: 'How many tigers?' },
+    { emoji: '🐷', noun: 'pigs', question: 'How many pigs?' },
+    { emoji: '🐶', noun: 'dogs', question: 'How many dogs?' },
+    { emoji: '🐱', noun: 'cats', question: 'How many cats?' },
+    { emoji: '🦆', noun: 'ducks', question: 'How many ducks?' },
+    { emoji: '🦘', noun: 'kangaroos', question: 'How many kangaroos?' },
+    { emoji: '🐯', noun: 'tigers', question: 'How many tigers?' },
   ],
 };
 
@@ -97,10 +97,12 @@ const buildBoard = () => {
     if (layout.type === 'content') {
       const c = contentQueue[qi++] || { unit: '', question: '', answer: '' };
       const item = { ...c };
-      // 4단원: noun(동물)만 있으면 1~10 숫자를 무작위로 붙여 대답을 만든다
+      // 4단원: noun(동물)만 있으면 1~10 숫자를 무작위로 붙여 대답을 만들고,
+      // 그 숫자(count)만큼 동물 그림을 보여주도록 cell에 저장한다
       if (!item.answer && item.noun) {
-        const num = NUMBER_WORDS[Math.floor(Math.random() * NUMBER_WORDS.length)];
-        item.answer = `${num} ${item.noun}.`;
+        const n = Math.floor(Math.random() * NUMBER_WORDS.length) + 1;
+        item.count = n;
+        item.answer = `${NUMBER_WORDS[n - 1]} ${item.noun}.`;
       }
       return { id, type: 'normal', ...item };
     }
@@ -206,6 +208,43 @@ function CellImage({ src, alt, className, fallbackClass, fallbackEmoji = '💬' 
     );
   }
   return <img src={src} alt={alt} className={className} onError={() => setErr(true)} />;
+}
+
+// 4단원(How many ~?) 전용: 정답 숫자(count)만큼 동물 그림을 나열해
+// 학생이 직접 세어 보고 답할 수 있게 한다.
+function CountEmoji({ emoji, count, boxClass = '', scale = 'sm' }) {
+  const steps =
+    scale === 'lg'
+      ? ['text-6xl md:text-7xl', 'text-5xl md:text-6xl', 'text-4xl md:text-5xl', 'text-3xl md:text-4xl']
+      : ['text-4xl md:text-6xl', 'text-3xl md:text-5xl', 'text-2xl md:text-3xl', 'text-lg md:text-2xl'];
+  const per = count <= 2 ? steps[0] : count <= 4 ? steps[1] : count <= 6 ? steps[2] : steps[3];
+  return (
+    <div
+      className={`flex flex-wrap content-center items-center justify-center gap-0.5 overflow-hidden ${boxClass}`}
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <span key={i} className={`${per} leading-none`}>
+          {emoji}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// 카드 그림: 4단원이면 숫자만큼 동물을 나열(CountEmoji), 그 외에는 이모지(또는 이미지)
+function CardVisual({ cell, imgClass, emojiClass, countBoxClass, scale = 'sm' }) {
+  if (cell && cell.count) {
+    return <CountEmoji emoji={cell.emoji} count={cell.count} boxClass={countBoxClass} scale={scale} />;
+  }
+  return (
+    <CellImage
+      src={cell && cell.image}
+      alt={cell && cell.answer}
+      fallbackEmoji={cell && cell.emoji}
+      className={imgClass}
+      fallbackClass={emojiClass}
+    />
+  );
 }
 
 // 문장을 단어 단위로 쪼개, 단어를 누르면 그 단어만 읽어주도록 렌더링
@@ -1154,12 +1193,12 @@ export default function App() {
                   <div className="absolute top-2 right-2 text-sm bg-gray-200/50 rounded-full w-6 h-6 flex items-center justify-center opacity-40 hover:opacity-100 hover:bg-emerald-100 transition-all">
                     🔊
                   </div>
-                  <CellImage
-                    src={cell.image}
-                    alt={cell.answer}
-                    fallbackEmoji={cell.emoji}
-                    className="w-20 h-20 md:w-[128px] md:h-[128px] object-contain mb-1 drop-shadow-md transform transition-transform group-hover:scale-110"
-                    fallbackClass="text-6xl md:text-8xl mb-1 drop-shadow-md transform transition-transform group-hover:scale-110"
+                  <CardVisual
+                    cell={cell}
+                    scale="sm"
+                    countBoxClass="w-20 h-20 md:w-[136px] md:h-[128px] mb-1 px-1"
+                    imgClass="w-20 h-20 md:w-[128px] md:h-[128px] object-contain mb-1 drop-shadow-md transform transition-transform group-hover:scale-110"
+                    emojiClass="text-6xl md:text-8xl mb-1 drop-shadow-md transform transition-transform group-hover:scale-110"
                   />
                   <div
                     className={`text-[10px] md:text-xs font-black border-2 px-2 py-0.5 rounded-full shadow-inner mt-1 ${UNIT_COLORS[cell.unit] || 'text-[#5c3a21] bg-[#e8dcc4] border-[#d4bca3]'}`}
@@ -1222,12 +1261,12 @@ export default function App() {
             </button>
 
             <div className="flex flex-col items-center mb-5">
-              <CellImage
-                src={previewCell.image}
-                alt={previewCell.answer}
-                fallbackEmoji={previewCell.emoji}
-                className="w-32 h-32 object-contain drop-shadow-md mb-3"
-                fallbackClass="text-8xl drop-shadow-md mb-3"
+              <CardVisual
+                cell={previewCell}
+                scale="lg"
+                countBoxClass="w-44 h-32 mb-3 px-1"
+                imgClass="w-32 h-32 object-contain drop-shadow-md mb-3"
+                emojiClass="text-8xl drop-shadow-md mb-3"
               />
               <span
                 className={`inline-block text-sm font-black px-3 py-1 rounded-xl shadow-sm border-2 ${UNIT_COLORS[previewCell.unit] || 'text-emerald-700 bg-emerald-50 border-emerald-300'}`}
@@ -1544,12 +1583,12 @@ export default function App() {
             {currentTask.mode === 'qna' ? (
               <div className="mb-6 bg-blue-50 p-6 rounded-3xl border-2 border-blue-100 relative">
                 <div className="flex justify-center items-center gap-4 mb-4">
-                  <CellImage
-                    src={currentTask.cell.image}
-                    alt={currentTask.answer}
-                    fallbackEmoji={currentTask.cell.emoji}
-                    className="w-32 h-32 object-contain drop-shadow-md"
-                    fallbackClass="text-8xl drop-shadow-md"
+                  <CardVisual
+                    cell={currentTask.cell}
+                    scale="lg"
+                    countBoxClass="w-44 h-32 px-1"
+                    imgClass="w-32 h-32 object-contain drop-shadow-md"
+                    emojiClass="text-8xl drop-shadow-md"
                   />
                   <span className={`text-sm font-black px-3 py-1 rounded-xl shadow-sm border-2 ${UNIT_COLORS[currentTask.cell.unit] || 'text-blue-600 bg-white border-blue-200'}`}>
                     {currentTask.cell.unit}
@@ -1570,12 +1609,12 @@ export default function App() {
             ) : (
               <div className="mb-6 bg-blue-50 p-6 rounded-3xl border-2 border-blue-100 relative">
                 <div className="flex justify-center items-center gap-4 mb-4">
-                  <CellImage
-                    src={currentTask.cell.image}
-                    alt={currentTask.answer}
-                    fallbackEmoji={currentTask.cell.emoji}
-                    className="w-32 h-32 object-contain drop-shadow-md"
-                    fallbackClass="text-8xl drop-shadow-md"
+                  <CardVisual
+                    cell={currentTask.cell}
+                    scale="lg"
+                    countBoxClass="w-44 h-32 px-1"
+                    imgClass="w-32 h-32 object-contain drop-shadow-md"
+                    emojiClass="text-8xl drop-shadow-md"
                   />
                   <span className={`text-sm font-black px-3 py-1 rounded-xl shadow-sm border-2 ${UNIT_COLORS[currentTask.cell.unit] || 'text-blue-600 bg-white border-blue-200'}`}>
                     {currentTask.cell.unit}
@@ -1651,12 +1690,12 @@ export default function App() {
 
             <div className="mb-6 bg-slate-50 p-6 rounded-3xl border-2 border-slate-200 relative">
               <div className="flex justify-center items-center gap-4 mb-6 opacity-60">
-                <CellImage
-                  src={currentTask.cell.image}
-                  alt={currentTask.answer}
-                  fallbackEmoji={currentTask.cell.emoji}
-                  className="w-28 h-28 object-contain"
-                  fallbackClass="text-7xl"
+                <CardVisual
+                  cell={currentTask.cell}
+                  scale="lg"
+                  countBoxClass="w-40 h-28 px-1"
+                  imgClass="w-28 h-28 object-contain"
+                  emojiClass="text-7xl"
                 />
                 <span className="text-sm font-black text-slate-500 border-2 border-slate-300 px-3 py-1 rounded-xl">
                   {currentTask.cell.unit}
