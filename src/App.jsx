@@ -15,12 +15,12 @@ import React, { useState, useEffect, useRef } from 'react';
 // =================================================================
 const UNIT_POOLS = {
   '2단원': [
-    { emoji: '🖊️', question: "What's this?", answer: "It's a pen." },
-    { emoji: '🎒', question: "What's that?", answer: "It's a bag." },
-    { emoji: '🚗', question: "What's this?", answer: "It's a car." },
-    { emoji: '☕', question: "What's that?", answer: "It's a cup." },
-    { emoji: '⚽', question: "What's this?", answer: "It's a ball." },
-    { emoji: '🪑', question: "What's that?", answer: "It's a chair." },
+    { emoji: '🖊️', icon: 'pen', question: "What's this?", answer: "It's a pen." },
+    { emoji: '🎒', icon: 'bag', question: "What's that?", answer: "It's a bag." },
+    { emoji: '🚗', icon: 'car', question: "What's this?", answer: "It's a car." },
+    { emoji: '☕', icon: 'cup', question: "What's that?", answer: "It's a cup." },
+    { emoji: '⚽', icon: 'ball', question: "What's this?", answer: "It's a ball." },
+    { emoji: '🪑', icon: 'chair', question: "What's that?", answer: "It's a chair." },
   ],
   '3단원': [
     { emoji: '💺', question: 'Sit down, please.', answer: 'Sit down, please.' },
@@ -200,6 +200,72 @@ const bestTranscript = (transcripts, required) => {
   return best;
 };
 
+// 2단원 사물: 누가 봐도 알아보는 직접 그린 SVG 일러스트 (이모지보다 선명·일관)
+const ICONS = {
+  pen: ({ className }) => (
+    <svg viewBox="0 0 100 100" className={className} aria-label="pen">
+      <rect x="38" y="12" width="24" height="22" rx="6" fill="#1e40af" />
+      <rect x="38" y="30" width="24" height="42" fill="#3b82f6" />
+      <rect x="44" y="30" width="5" height="42" fill="#93c5fd" />
+      <polygon points="38,72 62,72 50,90" fill="#f59e0b" />
+      <rect x="47" y="84" width="6" height="8" rx="1" fill="#111827" />
+    </svg>
+  ),
+  bag: ({ className }) => (
+    <svg viewBox="0 0 100 100" className={className} aria-label="bag">
+      <rect x="26" y="24" width="10" height="62" rx="5" fill="#b91c1c" />
+      <rect x="64" y="24" width="10" height="62" rx="5" fill="#b91c1c" />
+      <rect x="24" y="34" width="52" height="52" rx="16" fill="#ef4444" />
+      <path d="M44 34 q6 -13 12 0" fill="none" stroke="#7f1d1d" strokeWidth="5" />
+      <rect x="24" y="34" width="52" height="20" rx="12" fill="#dc2626" />
+      <rect x="34" y="60" width="32" height="22" rx="8" fill="#f87171" />
+      <rect x="46" y="58" width="8" height="6" rx="2" fill="#7f1d1d" />
+      <line x1="40" y1="71" x2="60" y2="71" stroke="#fca5a5" strokeWidth="3" />
+    </svg>
+  ),
+  car: ({ className }) => (
+    <svg viewBox="0 0 100 100" className={className} aria-label="car">
+      <path d="M16 56 L26 38 H66 L80 56 Z" fill="#86efac" />
+      <rect x="40" y="40" width="20" height="14" rx="2" fill="#bbf7d0" />
+      <rect x="12" y="54" width="76" height="20" rx="8" fill="#16a34a" />
+      <rect x="80" y="58" width="8" height="6" rx="2" fill="#fde047" />
+      <circle cx="32" cy="76" r="10" fill="#1f2937" />
+      <circle cx="68" cy="76" r="10" fill="#1f2937" />
+      <circle cx="32" cy="76" r="4" fill="#d1d5db" />
+      <circle cx="68" cy="76" r="4" fill="#d1d5db" />
+    </svg>
+  ),
+  cup: ({ className }) => (
+    <svg viewBox="0 0 100 100" className={className} aria-label="cup">
+      <path d="M34 24 q4 8 0 14 M50 22 q4 8 0 14 M66 24 q4 8 0 14" fill="none" stroke="#cbd5e1" strokeWidth="4" strokeLinecap="round" />
+      <path d="M28 42 H64 V66 a18 18 0 0 1 -18 18 H46 a18 18 0 0 1 -18 -18 Z" fill="#f97316" />
+      <ellipse cx="46" cy="42" rx="18" ry="6" fill="#fb923c" />
+      <path d="M64 48 a14 14 0 0 1 0 24" fill="none" stroke="#ea580c" strokeWidth="7" />
+    </svg>
+  ),
+  ball: ({ className }) => (
+    <svg viewBox="0 0 100 100" className={className} aria-label="ball">
+      <circle cx="50" cy="50" r="34" fill="#f97316" stroke="#7c2d12" strokeWidth="3" />
+      <g stroke="#7c2d12" strokeWidth="3" fill="none">
+        <line x1="50" y1="16" x2="50" y2="84" />
+        <line x1="16" y1="50" x2="84" y2="50" />
+        <path d="M26 22 Q44 50 26 78" />
+        <path d="M74 22 Q56 50 74 78" />
+      </g>
+    </svg>
+  ),
+  chair: ({ className }) => (
+    <svg viewBox="0 0 100 100" className={className} aria-label="chair">
+      <rect x="34" y="16" width="32" height="34" rx="4" fill="#8b5cf6" />
+      <rect x="43" y="22" width="5" height="24" rx="2" fill="#ede9fe" />
+      <rect x="52" y="22" width="5" height="24" rx="2" fill="#ede9fe" />
+      <rect x="28" y="48" width="44" height="12" rx="3" fill="#a78bfa" />
+      <rect x="31" y="60" width="8" height="24" rx="2" fill="#7c3aed" />
+      <rect x="61" y="60" width="8" height="24" rx="2" fill="#7c3aed" />
+    </svg>
+  ),
+};
+
 function CellImage({ src, alt, className, fallbackClass, fallbackEmoji = '💬' }) {
   const [err, setErr] = useState(false);
   if (!src || err) {
@@ -235,6 +301,10 @@ function CountEmoji({ emoji, count, boxClass = '', scale = 'sm' }) {
 function CardVisual({ cell, imgClass, emojiClass, countBoxClass, scale = 'sm' }) {
   if (cell && cell.count) {
     return <CountEmoji emoji={cell.emoji} count={cell.count} boxClass={countBoxClass} scale={scale} />;
+  }
+  const Icon = cell && cell.icon && ICONS[cell.icon];
+  if (Icon) {
+    return <Icon className={imgClass} />;
   }
   return (
     <CellImage
