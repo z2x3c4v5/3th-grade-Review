@@ -23,12 +23,12 @@ const UNIT_POOLS = {
     { emoji: '🪑', icon: 'chair', question: "What's that?", answer: "It's a chair." },
   ],
   '3단원': [
-    { emoji: '💺', question: 'Sit down, please.', answer: 'Sit down, please.' },
-    { emoji: '🧍', question: 'Stand up, please.', answer: 'Stand up, please.' },
-    { emoji: '🚪', question: 'Open the door, please.', answer: 'Open the door, please.' },
-    { emoji: '🔒', question: 'Close the door, please.', answer: 'Close the door, please.' },
-    { emoji: '👋', question: 'Come here, please.', answer: 'Come here, please.' },
-    { emoji: '👀', question: 'Look at me.', answer: 'Look at me.' },
+    { emoji: '💺', single: true, question: 'Sit down, please.', answer: 'Sit down, please.' },
+    { emoji: '🧍', single: true, question: 'Stand up, please.', answer: 'Stand up, please.' },
+    { emoji: '🚪', single: true, question: 'Open the door, please.', answer: 'Open the door, please.' },
+    { emoji: '🔒', single: true, question: 'Close the door, please.', answer: 'Close the door, please.' },
+    { emoji: '👋', single: true, question: 'Come here, please.', answer: 'Come here, please.' },
+    { emoji: '👀', single: true, question: 'Look at me.', answer: 'Look at me.' },
   ],
   '4단원': [
     { emoji: '🐷', noun: 'pigs', question: 'How many pigs?' },
@@ -102,7 +102,8 @@ const buildBoard = () => {
       if (!item.answer && item.noun) {
         const n = Math.floor(Math.random() * NUMBER_WORDS.length) + 1;
         item.count = n;
-        item.answer = `${NUMBER_WORDS[n - 1]} ${item.noun}.`;
+        // 정답에 영어 철자와 함께 숫자도 괄호로 보여준다: "Seven (7) pigs."
+        item.answer = `${NUMBER_WORDS[n - 1]} (${n}) ${item.noun}.`;
       }
       return { id, type: 'normal', ...item };
     }
@@ -351,7 +352,8 @@ const parseForBlanks = (answer) => {
     const core = m ? m[2] : seg;
     const post = m ? m[3] : '';
     const norm = normWord(core);
-    if (core && norm && !STOPWORDS.has(norm)) {
+    // 괄호 속 숫자(예: "(7)")는 빈칸으로 만들지 않고 힌트로 그대로 보여준다
+    if (core && norm && !STOPWORDS.has(norm) && !/^\d+$/.test(norm)) {
       segs.push({ type: 'blank', pre, core, post, norm, idx: blankIdx });
       blankIdx++;
     } else {
@@ -478,7 +480,9 @@ export default function App() {
   const speakText = (text, rate = 0.8) => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
+      // 괄호 속 숫자 힌트(예: "(7)")는 읽지 않는다 — "seven seven" 처럼 들리는 것 방지
+      const spoken = String(text).replace(/\s*\([^)]*\)/g, '');
+      const utterance = new SpeechSynthesisUtterance(spoken);
       utterance.lang = 'en-US';
       utterance.rate = rate;
       window.speechSynthesis.speak(utterance);
@@ -723,13 +727,15 @@ export default function App() {
       cell,
       question: cell.question,
       answer: cell.answer,
+      single: cell.single,
       mode: gameMode,
     });
 
     // qna 모드는 학생이 스스로 질문/대답을 만들어야 하므로 자동 음성을 재생하지 않음
     // (한국어 안내를 영어 엔진으로 읽어 이상하게 들리던 문제 제거 — 필요하면 '들어보며 연습' 버튼 사용)
-    if (gameMode !== 'qna') {
-      setTimeout(() => speakText(cell.question), 500);
+    // 단, 한 문장 표현(명령문)은 질문/대답 구분이 없으므로 항상 그 문장을 들려준다.
+    if (gameMode !== 'qna' || cell.single) {
+      setTimeout(() => speakText(cell.single ? cell.answer : cell.question), 500);
     }
   };
 
@@ -802,8 +808,9 @@ export default function App() {
     if (!task) return;
     const list = Array.isArray(transcripts) ? transcripts : [transcripts];
 
-    const required = contentTokens(task.answer);
-    if (task.mode === 'qna') {
+    // 괄호 속 숫자 힌트는 정답 판정에서 제외(학생은 "seven"이라고 말함)
+    const required = contentTokens(task.answer.replace(/\s*\([^)]*\)/g, ' '));
+    if (task.mode === 'qna' && !task.single) {
       contentTokens(task.question).forEach((t) => {
         if (!required.includes(t)) required.push(t);
       });
@@ -845,7 +852,7 @@ export default function App() {
     const question = cell.question;
     const answer = cell.answer;
 
-    setCurrentTask({ cell, question, answer });
+    setCurrentTask({ cell, question, answer, single: cell.single });
 
     const endAI = () => {
       setAiSpeechText('AI 차례 끝! 이제 네가 주사위를 굴려서 정답을 말해봐!');
@@ -856,7 +863,7 @@ export default function App() {
     };
 
     setTimeout(() => {
-      if (gameMode === 'qna') {
+      if (gameMode === 'qna' && !cell.single) {
         setAiSpeechText(`"${question}"`);
         speakText(question);
         setTimeout(() => {
@@ -865,7 +872,7 @@ export default function App() {
           setTimeout(endAI, 2500);
         }, 2500);
       } else {
-        // 대답만 하기 모드: AI도 대답만
+        // 대답만 하기 모드(또는 한 문장 명령문): AI도 한 문장만
         setAiSpeechText(`"${answer}"`);
         speakText(answer);
         setTimeout(endAI, 2500);
@@ -902,7 +909,7 @@ export default function App() {
       // 쓰기 모드여도 쓰기 대상 칸이 아니면 평소처럼 듣기/연습 팝업
       setWriteMode(false);
       setBlankSet(null);
-      speakText(`${cell.question} ... ${cell.answer}`);
+      speakText(cell.single ? cell.answer : `${cell.question} ... ${cell.answer}`);
     }
   };
 
@@ -1348,18 +1355,29 @@ export default function App() {
             {!writeMode ? (
               <>
                 <div className="space-y-3 text-left">
-                  <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4">
-                    <p className="text-xs font-black text-blue-500 uppercase tracking-wide mb-1">Question · 질문</p>
-                    <p className="text-2xl md:text-3xl font-black text-slate-800 leading-snug">
-                      <ClickableWords text={previewCell.question} onWord={(w) => { speakText(w); setWordHint({ word: w, meaning: lookupMeaning(w) }); }} />
-                    </p>
-                  </div>
-                  <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
-                    <p className="text-xs font-black text-amber-600 uppercase tracking-wide mb-1">Answer · 대답</p>
-                    <p className="text-2xl md:text-3xl font-black text-slate-800 leading-snug">
-                      <ClickableWords text={previewCell.answer} onWord={(w) => { speakText(w); setWordHint({ word: w, meaning: lookupMeaning(w) }); }} />
-                    </p>
-                  </div>
+                  {previewCell.single ? (
+                    <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
+                      <p className="text-xs font-black text-amber-600 uppercase tracking-wide mb-1">Sentence · 문장</p>
+                      <p className="text-2xl md:text-3xl font-black text-slate-800 leading-snug">
+                        <ClickableWords text={previewCell.answer} onWord={(w) => { speakText(w); setWordHint({ word: w, meaning: lookupMeaning(w) }); }} />
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4">
+                        <p className="text-xs font-black text-blue-500 uppercase tracking-wide mb-1">Question · 질문</p>
+                        <p className="text-2xl md:text-3xl font-black text-slate-800 leading-snug">
+                          <ClickableWords text={previewCell.question} onWord={(w) => { speakText(w); setWordHint({ word: w, meaning: lookupMeaning(w) }); }} />
+                        </p>
+                      </div>
+                      <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
+                        <p className="text-xs font-black text-amber-600 uppercase tracking-wide mb-1">Answer · 대답</p>
+                        <p className="text-2xl md:text-3xl font-black text-slate-800 leading-snug">
+                          <ClickableWords text={previewCell.answer} onWord={(w) => { speakText(w); setWordHint({ word: w, meaning: lookupMeaning(w) }); }} />
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <p className="text-sm font-bold text-slate-500 mt-3">💡 단어를 누르면 그 단어만 들려주고 한글 뜻이 나와요</p>
@@ -1373,7 +1391,7 @@ export default function App() {
 
                 <div className="mt-5 flex flex-wrap justify-center gap-2">
                   <button
-                    onClick={() => speakText(`${previewCell.question} ... ${previewCell.answer}`)}
+                    onClick={() => speakText(previewCell.single ? previewCell.answer : `${previewCell.question} ... ${previewCell.answer}`)}
                     className="px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-full font-black text-lg shadow-[0_5px_0_0_rgba(5,150,105,1)] active:shadow-none active:translate-y-1 transition-all"
                   >
                     🔊 다시 듣기
@@ -1416,16 +1434,20 @@ export default function App() {
                 return (
                   <>
                     <p className="text-base font-bold text-violet-700 mb-2">
-                      ✏️ 공책에 두 문장을 따라 써보세요 (빈칸은 알맞은 단어로 채우기)
+                      {previewCell.single
+                        ? '✏️ 공책에 이 문장을 따라 써보세요 (빈칸은 알맞은 단어로 채우기)'
+                        : '✏️ 공책에 두 문장을 따라 써보세요 (빈칸은 알맞은 단어로 채우기)'}
                     </p>
 
                     <div className="bg-white border-2 border-violet-200 rounded-2xl text-left text-3xl font-black text-slate-800 eng-paper">
-                      <p>
-                        <ClickableWords
-                          text={previewCell.question}
-                          onWord={(w) => { speakText(w); setWordHint({ word: w, meaning: lookupMeaning(w) }); }}
-                        />
-                      </p>
+                      {!previewCell.single && (
+                        <p>
+                          <ClickableWords
+                            text={previewCell.question}
+                            onWord={(w) => { speakText(w); setWordHint({ word: w, meaning: lookupMeaning(w) }); }}
+                          />
+                        </p>
+                      )}
                       <p>
                         {answerSegs.map((s, i) => renderSeg(s, i, false))}
                       </p>
@@ -1435,7 +1457,7 @@ export default function App() {
                       <div className="mt-4 bg-green-50 border-2 border-green-300 rounded-2xl p-3 text-left">
                         <p className="text-xs font-black text-green-600 uppercase tracking-wide mb-2">정답</p>
                         <div className="bg-white border border-green-200 rounded-xl text-3xl font-black text-slate-800 eng-paper">
-                          <p>{previewCell.question}</p>
+                          {!previewCell.single && <p>{previewCell.question}</p>}
                           <p>{answerSegs.map((s, i) => renderSeg(s, i, true))}</p>
                         </div>
                       </div>
@@ -1443,7 +1465,7 @@ export default function App() {
 
                     <div className="mt-5 flex flex-wrap justify-center gap-2">
                       <button
-                        onClick={() => speakText(`${previewCell.question} ... ${previewCell.answer}`)}
+                        onClick={() => speakText(previewCell.single ? previewCell.answer : `${previewCell.question} ... ${previewCell.answer}`)}
                         className="px-4 py-2 text-sm md:text-base bg-emerald-500 hover:bg-emerald-400 text-white rounded-full font-black shadow-[0_4px_0_0_rgba(5,150,105,1)] active:shadow-none active:translate-y-1 transition-all"
                       >
                         🔊 듣기
@@ -1650,7 +1672,30 @@ export default function App() {
       {gameState === 'speaking' && currentTask && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-[2rem] p-6 md:p-10 max-w-lg w-full text-center shadow-2xl border-8 border-blue-400">
-            {currentTask.mode === 'qna' ? (
+            {currentTask.single ? (
+              <div className="mb-6 bg-blue-50 p-6 rounded-3xl border-2 border-blue-100 relative">
+                <div className="flex justify-center items-center gap-4 mb-4">
+                  <CardVisual
+                    cell={currentTask.cell}
+                    scale="lg"
+                    countBoxClass="w-44 h-32 px-1"
+                    imgClass="w-32 h-32 object-contain drop-shadow-md"
+                    emojiClass="text-8xl drop-shadow-md"
+                  />
+                  <span className={`text-sm font-black px-3 py-1 rounded-xl shadow-sm border-2 ${UNIT_COLORS[currentTask.cell.unit] || 'text-blue-600 bg-white border-blue-200'}`}>
+                    {currentTask.cell.unit}
+                  </span>
+                </div>
+                <p className="text-blue-500 font-bold mb-2 uppercase tracking-wide">🗣️ 이 문장을 말해보세요:</p>
+                <h3 className="text-3xl font-black text-slate-800">"{currentTask.answer}"</h3>
+                <button
+                  onClick={() => speakText(currentTask.answer)}
+                  className="mt-4 text-sm text-blue-600 bg-white border border-blue-200 hover:bg-blue-100 px-4 py-2 rounded-full transition-colors font-bold shadow-sm"
+                >
+                  🔊 문장 다시 듣기
+                </button>
+              </div>
+            ) : currentTask.mode === 'qna' ? (
               <div className="mb-6 bg-blue-50 p-6 rounded-3xl border-2 border-blue-100 relative">
                 <div className="flex justify-center items-center gap-4 mb-4">
                   <CardVisual
@@ -1703,9 +1748,11 @@ export default function App() {
 
             <div className="mb-8">
               <p className="text-lg font-bold text-slate-600 mb-4">
-                {currentTask.mode === 'qna'
-                  ? '마이크를 누르고 질문과 대답을 모두 말해보세요!'
-                  : '마이크를 누르고 영어로 대답하세요!'}
+                {currentTask.single
+                  ? '마이크를 누르고 이 문장을 말해보세요!'
+                  : currentTask.mode === 'qna'
+                    ? '마이크를 누르고 질문과 대답을 모두 말해보세요!'
+                    : '마이크를 누르고 영어로 대답하세요!'}
               </p>
               <button
                 onClick={startListening}
