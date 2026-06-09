@@ -31,12 +31,12 @@ const UNIT_POOLS = {
     { emoji: '👀', single: true, question: 'Look at me.', answer: 'Look at me.' },
   ],
   '4단원': [
-    { emoji: '🐷', noun: 'pigs', question: 'How many pigs?' },
-    { emoji: '🐶', noun: 'dogs', question: 'How many dogs?' },
-    { emoji: '🐱', noun: 'cats', question: 'How many cats?' },
-    { emoji: '🦆', noun: 'ducks', question: 'How many ducks?' },
-    { emoji: '🦘', noun: 'kangaroos', question: 'How many kangaroos?' },
-    { emoji: '🐯', noun: 'tigers', question: 'How many tigers?' },
+    { emoji: '🐷', noun: 'pigs', one: 'pig', question: 'How many pigs?' },
+    { emoji: '🐶', noun: 'dogs', one: 'dog', question: 'How many dogs?' },
+    { emoji: '🐱', noun: 'cats', one: 'cat', question: 'How many cats?' },
+    { emoji: '🦆', noun: 'ducks', one: 'duck', question: 'How many ducks?' },
+    { emoji: '🦘', noun: 'kangaroos', one: 'kangaroo', question: 'How many kangaroos?' },
+    { emoji: '🐯', noun: 'tigers', one: 'tiger', question: 'How many tigers?' },
   ],
 };
 
@@ -103,7 +103,9 @@ const buildBoard = () => {
         const n = Math.floor(Math.random() * NUMBER_WORDS.length) + 1;
         item.count = n;
         // 정답에 영어 철자와 함께 숫자도 괄호로 보여준다: "Seven (7) pigs."
-        item.answer = `${NUMBER_WORDS[n - 1]} (${n}) ${item.noun}.`;
+        // 1마리일 때는 단수형으로: "One (1) pig."
+        const noun = n === 1 ? (item.one || item.noun) : item.noun;
+        item.answer = `${NUMBER_WORDS[n - 1]} (${n}) ${noun}.`;
       }
       return { id, type: 'normal', ...item };
     }
@@ -390,6 +392,7 @@ const WORD_MEANING = {
   // 4단원 (몇 마리니?)
   pigs: '돼지들', dogs: '개들', cats: '고양이들', ducks: '오리들',
   kangaroos: '캥거루들', tigers: '호랑이들',
+  pig: '돼지', dog: '개', cat: '고양이', duck: '오리', kangaroo: '캥거루', tiger: '호랑이',
 };
 
 const lookupMeaning = (raw) => {
