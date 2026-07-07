@@ -240,6 +240,43 @@ const bestTranscript = (transcripts, required) => {
   return best;
 };
 
+// 발음 피드백: 목표 문장을 단어별로 쪼개, 학생이 맞춘/놓친 핵심 단어를 표시할 수 있게
+// { lines: [[{type,text,isKey,matched,norm,core}...]], missed: [{norm,core}...] } 를 돌려준다.
+const analyzeSpoken = (transcripts, task) => {
+  let spokenToks = [];
+  transcripts.forEach((t) => { spokenToks = spokenToks.concat(tokenize(t)); });
+  const spokenConcat = spokenToks.join('');
+  const targets = task.single
+    ? [task.answer]
+    : task.mode === 'qna'
+      ? [task.question, task.answer]
+      : [task.answer];
+  const lines = targets.map((sentence) =>
+    sentence
+      .split(/(\s+)/)
+      .filter((w) => w !== '')
+      .map((w) => {
+        if (/^\s+$/.test(w)) return { type: 'space', text: w };
+        const m = w.match(/^([^A-Za-z0-9'’]*)([A-Za-z0-9'’]*)([^A-Za-z0-9'’]*)$/);
+        const core = m ? m[2] : w;
+        const norm = normWord(core);
+        // 괄호 속 숫자 힌트나 기능어(the/a/is...)는 채점 대상이 아님
+        const isKey = !!core && !!norm && !STOPWORDS.has(norm) && !/^\d+$/.test(norm);
+        const matched = isKey ? tokenMatches(norm, spokenToks, spokenConcat) : false;
+        return { type: 'word', text: w, isKey, matched, norm, core };
+      })
+  );
+  const missed = [];
+  lines.forEach((line) =>
+    line.forEach((s) => {
+      if (s.type === 'word' && s.isKey && !s.matched && !missed.some((x) => x.norm === s.norm)) {
+        missed.push({ norm: s.norm, core: s.core });
+      }
+    })
+  );
+  return { lines, missed };
+};
+
 // 2단원 사물: 누가 봐도 알아보는 직접 그린 SVG 일러스트 (이모지보다 선명·일관)
 const ICONS = {
   pen: ({ className }) => (
@@ -508,6 +545,7 @@ export default function App() {
   const [reviewList, setReviewList] = useState([]); // 이번 게임에서 틀린 문장(복습 대상)
   const [progress, setProgress] = useState(() => loadProgress()); // 누적 별·최고점·오답노트
   const [reviewDeck, setReviewDeck] = useState(null); // 복습 카드 열림: {cells, idx, title}
+  const [wordFeedback, setWordFeedback] = useState(null); // 발음 피드백: 단어별 맞춤/놓침
   const finishedSavedRef = useRef(false); // 게임 종료 시 기록 저장을 한 번만
   const bestBeforeRef = useRef(0); // 이번 게임 시작 전의 최고 점수(성적표 비교용)
 
@@ -795,6 +833,7 @@ export default function App() {
     setGameState('speaking');
     setSpokenText('');
     setFeedback('');
+    setWordFeedback(null);
     setAttemptCount(0);
 
     setCurrentTask({
@@ -868,6 +907,7 @@ export default function App() {
     try {
       setSpokenText('');
       setFeedback('');
+      setWordFeedback(null);
       isListeningRef.current = true;
       setIsListening(true);
       recognition.start();
@@ -891,6 +931,9 @@ export default function App() {
     }
 
     const isCorrect = required.length > 0 && matchAggregate(list, required);
+
+    // 단어별 발음 피드백(맞춘/놓친 핵심 단어) 계산해서 화면에 보여준다
+    setWordFeedback(analyzeSpoken(list, task));
 
     if (isCorrect) {
       // 한 번에 맞히면 ⭐3, 두 번째 2, 세 번째 1점
@@ -1052,6 +1095,7 @@ export default function App() {
     setScorePts(0);
     setReviewList([]);
     setReviewDeck(null);
+    setWordFeedback(null);
   };
 
   const toggleBoardWriting = () => {
@@ -1890,6 +1934,46 @@ export default function App() {
                   className={`mt-4 text-xl font-black py-3 px-4 rounded-xl border-2 ${feedback.includes('정답') || feedback.includes('잘했어요') ? 'text-green-700 bg-green-100 border-green-300' : 'text-rose-600 bg-rose-50 border-rose-200'}`}
                 >
                   {feedback}
+                </div>
+              )}
+
+              {wordFeedback && (
+                <div className="mt-4 bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 text-left">
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-wide mb-2">
+                    🗣️ 내 발음 확인 <span className="text-green-600">초록=잘했어요</span> · <span className="text-rose-500">빨강=다시</span>
+                  </p>
+                  {wordFeedback.lines.map((line, li) => (
+                    <p key={li} className="text-2xl md:text-3xl font-black leading-snug">
+                      {line.map((s, si) => {
+                        if (s.type === 'space') return <span key={si}>{s.text}</span>;
+                        if (!s.isKey) return <span key={si} className="text-slate-400">{s.text}</span>;
+                        return (
+                          <span
+                            key={si}
+                            onClick={() => speakText(s.core)}
+                            title="눌러서 듣기"
+                            className={`cursor-pointer rounded px-1 ${s.matched ? 'text-green-700 bg-green-100' : 'text-rose-600 bg-rose-100 underline decoration-wavy decoration-rose-400'}`}
+                          >
+                            {s.text}
+                          </span>
+                        );
+                      })}
+                    </p>
+                  ))}
+                  {wordFeedback.missed.length > 0 && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-black text-rose-600">다시 말해볼까요?</span>
+                      {wordFeedback.missed.map((m, i) => (
+                        <button
+                          key={i}
+                          onClick={() => speakText(m.core)}
+                          className="text-base font-black text-white bg-rose-400 hover:bg-rose-500 px-3 py-1 rounded-full shadow-sm transition-colors"
+                        >
+                          🔊 {m.core}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
